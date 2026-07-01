@@ -1,0 +1,16 @@
+{:paths ["src"]
+ :version "0.1.0"
+ ;; kotoba-lang/lsp-rpc — JSON-RPC framing over a host-injected transport.
+ ;; Consumes lsp (diagnostics model) + json (wire encode/decode). Closes the
+ ;; :lsp-wire engineering gap: the lsp lib owns the data contract, lsp-rpc owns
+ ;; the JSON-RPC message framing; the transport (send/recv) stays host-injected
+ ;; (WASM premise — a cell can't open a socket). No third-party deps; .cljc.
+ ;; See ADR-kotoba-lang-foundational-stdlib.md.
+ :deps {io.github.kotoba-lang/lsp  {:git/sha "8d055a0388da283a82adb1be556139d6d0ec755a"}
+        io.github.kotoba-lang/json {:git/sha "deb01e68fc6ddd936953575ef54f06dc26f89640"}}
+ :aliases
+ {:test {:extra-paths ["test"]
+         :extra-deps {io.github.cognitect-labs/test-runner
+                      {:git/tag "v0.5.1" :git/sha "dfb30dd"}}
+         :main-opts ["-m" "cognitect.test-runner"]
+         :exec-fn cognitect.test-runner.api/test}}}

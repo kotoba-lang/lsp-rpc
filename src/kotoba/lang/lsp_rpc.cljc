@@ -1,0 +1,100 @@
+(ns kotoba.lang.lsp-rpc
+  "JSON-RPC 2.0 framing over a host-injected transport. Consumes lsp
+  (diagnostics model) + json (wire encode/decode). The lsp lib owns the data
+  contract; lsp-rpc owns the JSON-RPC message framing; the transport (send/recv
+  bytes) stays host-injected (WASM premise — a cell can't open a socket).
+  Closes the :lsp-wire engineering gap. No third-party deps; .cljc."
+  (:require [kotoba.lang.json :as json]
+            [kotoba.lang.lsp :as lsp]))
+
+;; ---------- error codes (JSON-RPC 2.0) ----------
+
+(def errors
+  {:parse-error    -32700
+   :invalid-request -32600
+   :method-not-found -32601
+   :invalid-params -32602
+   :internal-error -32603})
+
+;; ---------- message constructors ----------
+
+(defn request       [id method params] {:jsonrpc "2.0" :id id :method method :params (or params {})})
+(defn response       [id result]       {:jsonrpc "2.0" :id id :result result})
+(defn notification   [method params]   {:jsonrpc "2.0" :method method :params (or params {})})
+(defn error-response [id code message & [data]]
+  (cond-> {:jsonrpc "2.0" :id id :error {:code code :message message}}
+    data (assoc-in [:error :data] data)))
+
+;; ---------- Content-Length framing ----------
+
+(defn frame
+  "Frame a message map as a Content-Length envelope string (the LSP wire shape).
+  The body is JSON (via kotoba.lang.json)."
+  [msg]
+  (let [body (json/encode msg)
+        len  (count (.getBytes ^String body "UTF-8"))]
+    (str "Content-Length: " len "\r\n\r\n" body)))
+
+(defn- read-content-length
+  "Read Content-Length from a framed string. Returns [len header-len] or nil."
+  [s]
+  (when-let [m (re-find #"Content-Length:\s*(\d+)\r\n\r\n" s)]
+    [(Long/parseLong (second m)) (count (first m))]))
+
+(defn- keywordize
+  "Recursively turn string keys into keyword keys (JSON-RPC wire uses string
+  keys; the in-language contract uses keywords)."
+  [x]
+  (cond
+    (map? x) (zipmap (map #(if (string? %) (keyword %) %) (keys x))
+                     (map keywordize (vals x)))
+    (vector? x) (mapv keywordize x)
+    :else x))
+
+(defn unframe
+  "Parse one framed message from `s`. Returns `[message-map remainder]` if a
+  complete message is present, else `nil` (needs more input). The message map
+  has keyword keys (keywordized from the JSON wire form)."
+  [s]
+  (when-let [[len header-len] (read-content-length s)]
+    (when (>= (count s) (+ header-len len))
+      (let [body (subs s header-len (+ header-len len))
+            rest (subs s (+ header-len len))]
+        [(keywordize (json/decode body)) rest]))))
+
+;; ---------- server ----------
+
+(defn make-server
+  "Make a JSON-RPC server. `handler` is a fn of (method params) → result (or nil
+  for methods with no result). `send` is the host-injected transport fn (fn of
+  string — the host decides where bytes go). Returns a server map."
+  [handler send]
+  {:handler handler :send send})
+
+(defn handle-message
+  "Handle a single framed request/notification string on `server`. Dispatches to
+  the handler, frames the response, and sends it via the host-injected `send`
+  fn. Returns the response message map (or nil for notifications / parse
+  errors that can't get an id)."
+  [server message-str]
+  (let [parsed (try (unframe message-str) (catch #?(:clj Throwable :cljs :default) _ nil))]
+    (if-not parsed
+      (let [e (error-response nil (:parse-error errors) "parse error")]
+        ((:send server) (frame e)) e)
+      (let [msg (first parsed)
+            method (:method msg)
+            params (:params msg)
+            id (:id msg)]
+        (if (nil? method)
+          (let [e (error-response id (:invalid-request errors) "invalid request")]
+            ((:send server) (frame e)) e)
+          (try
+            (let [result ((:handler server) method params)]
+              (if (nil? id)
+                nil                                  ; notification → no response
+                (let [resp (response id result)]
+                  ((:send server) (frame resp)) resp)))
+            (catch #?(:clj Throwable :cljs :default) ex
+              (let [e (error-response id (:internal-error errors)
+                                      (.getMessage ex))]
+                ((:send server) (frame e)) e))))))))
