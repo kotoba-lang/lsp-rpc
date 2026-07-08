@@ -7,7 +7,7 @@
  ;; (WASM premise — a cell can't open a socket). No third-party deps; .cljc.
  ;; See ADR-kotoba-lang-foundational-stdlib.md.
  :deps {io.github.kotoba-lang/lsp  {:git/sha "8d055a0388da283a82adb1be556139d6d0ec755a"}
-        io.github.kotoba-lang/json {:git/sha "deb01e68fc6ddd936953575ef54f06dc26f89640"}}
+        io.github.kotoba-lang/json {:git/sha "79eb17c7ee4df86a3c35598cdaf5791eeebbf45f"}}
  :aliases
  {:test {:extra-paths ["test"]
          :extra-deps {io.github.cognitect-labs/test-runner
