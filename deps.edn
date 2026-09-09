@@ -6,7 +6,32 @@
  ;; the JSON-RPC message framing; the transport (send/recv) stays host-injected
  ;; (WASM premise — a cell can't open a socket). No third-party deps; .cljc.
  ;; See ADR-kotoba-lang-foundational-stdlib.md.
- :deps {io.github.kotoba-lang/lsp  {:git/sha "8d055a0388da283a82adb1be556139d6d0ec755a"}
+ :deps {
+        io.github.kotoba-lang/lsp-rpc-error-response
+        {:git/url "https://github.com/kotoba-lang/lsp-rpc-error-response.git"
+         :git/sha "2e3e2d36297067086db45cabd9d17409cebbc9c4"}
+        io.github.kotoba-lang/lsp-rpc-frame
+        {:git/url "https://github.com/kotoba-lang/lsp-rpc-frame.git"
+         :git/sha "54a815b9b0e5a68860417d899a4dd9328ef3bc92"}
+        io.github.kotoba-lang/lsp-rpc-handle-message
+        {:git/url "https://github.com/kotoba-lang/lsp-rpc-handle-message.git"
+         :git/sha "2670bc3f57620fa8a58caf8b3147378cf9deeb3e"}
+        io.github.kotoba-lang/lsp-rpc-make-server
+        {:git/url "https://github.com/kotoba-lang/lsp-rpc-make-server.git"
+         :git/sha "aa9dacfd5e39fea2c3b349307b057a7cfec716d8"}
+        io.github.kotoba-lang/lsp-rpc-notification
+        {:git/url "https://github.com/kotoba-lang/lsp-rpc-notification.git"
+         :git/sha "51127b73f58535a91c7bfc46fa5fad97f1dffb47"}
+        io.github.kotoba-lang/lsp-rpc-request
+        {:git/url "https://github.com/kotoba-lang/lsp-rpc-request.git"
+         :git/sha "f6ff3fb9539553919f504c995a389e88b2f4e269"}
+        io.github.kotoba-lang/lsp-rpc-response
+        {:git/url "https://github.com/kotoba-lang/lsp-rpc-response.git"
+         :git/sha "4205f34ac4ec30111ee9f3532895068b9894cc7c"}
+        io.github.kotoba-lang/lsp-rpc-unframe
+        {:git/url "https://github.com/kotoba-lang/lsp-rpc-unframe.git"
+         :git/sha "91bb7104da9fcbe91751afd3e9ab2ee003f3f665"}
+io.github.kotoba-lang/lsp  {:git/sha "8d055a0388da283a82adb1be556139d6d0ec755a"}
         io.github.kotoba-lang/json {:git/sha "79eb17c7ee4df86a3c35598cdaf5791eeebbf45f"}}
  :aliases
  {:test {:extra-paths ["test"]
